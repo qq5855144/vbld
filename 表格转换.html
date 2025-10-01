@@ -1,0 +1,684 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Markdown表格转Excel转换器</title>
+    <script src="https://unpkg.com/xlsx/dist/xlsx.full.min.js"></script>
+    <style>
+        :root {
+            --primary-color: rgba(81, 102, 216, 0.7);
+            --secondary-color: rgba(136, 96, 208, 0.7);
+            --accent-color: rgba(101, 196, 245, 0.7);
+            --dark-bg: rgba(25, 25, 35, 0.8);
+            --light-text: #ffffff;
+            --shadow-color: rgba(0, 0, 0, 0.2);
+            --success-color: #4caf50;
+            --error-color: #f44336;
+            --warning-color: #ff9800;
+        }
+        
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+        
+        body {
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            background: linear-gradient(135deg, #2c3e50, #1a1a2e);
+            padding: 20px;
+            color: var(--light-text);
+        }
+        
+        .container {
+            width: 90%;
+            max-width: 1200px;
+            padding: 30px;
+        }
+        
+        header {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+        
+        h1 {
+            font-size: 2.5rem;
+            margin-bottom: 10px;
+            text-shadow: 2px 2px 4px var(--shadow-color);
+            background: linear-gradient(90deg, var(--primary-color), var(--secondary-color));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+        
+        .description {
+            font-size: 1.1rem;
+            opacity: 0.9;
+            max-width: 600px;
+            margin: 0 auto;
+        }
+        
+        .glass-panel {
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(10px);
+            border-radius: 15px;
+            padding: 25px;
+            box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.36);
+            border: 1px solid rgba(255, 255, 255, 0.18);
+            margin-bottom: 25px;
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+        }
+        
+        .glass-panel:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 12px 40px 0 rgba(0, 0, 0, 0.4);
+        }
+        
+        .input-section, .output-section {
+            margin-bottom: 25px;
+        }
+        
+        h2 {
+            font-size: 1.5rem;
+            margin-bottom: 15px;
+            color: var(--accent-color);
+        }
+        
+        textarea {
+            width: 100%;
+            min-height: 200px;
+            padding: 15px;
+            border-radius: 10px;
+            background: rgba(0, 0, 0, 0.2);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            color: var(--light-text);
+            font-size: 1rem;
+            resize: vertical;
+            outline: none;
+            transition: border-color 0.3s ease;
+        }
+        
+        textarea:focus {
+            border-color: var(--accent-color);
+        }
+        
+        .button-group {
+            display: flex;
+            gap: 15px;
+            justify-content: center;
+            margin: 20px 0;
+        }
+        
+        button {
+            padding: 12px 25px;
+            border: none;
+            border-radius: 50px;
+            background: linear-gradient(90deg, var(--primary-color), var(--secondary-color));
+            color: white;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+            outline: none;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        
+        button:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 6px 20px rgba(0, 0, 0, 0.3);
+        }
+        
+        button:active {
+            transform: translateY(1px);
+        }
+        
+        #convertBtn {
+            background: linear-gradient(90deg, var(--primary-color), var(--accent-color));
+        }
+        
+        #downloadBtn {
+            background: linear-gradient(90deg, var(--secondary-color), #e64a4a);
+        }
+        
+        #downloadBtn:disabled {
+            background: rgba(128, 128, 128, 0.5);
+            cursor: not-allowed;
+            transform: none;
+            box-shadow: none;
+        }
+        
+        .preview-area {
+            min-height: 100px;
+            max-height: 400px;
+            padding: 15px;
+            border-radius: 10px;
+            background: rgba(0, 0, 0, 0.2);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            overflow: auto;
+        }
+        
+        .preview-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 10px 0;
+            background: rgba(255, 255, 255, 0.05);
+        }
+        
+        .preview-table th, .preview-table td {
+            padding: 10px 15px;
+            text-align: left;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        
+        .preview-table th {
+            background: rgba(81, 102, 216, 0.3);
+            font-weight: bold;
+        }
+        
+        .preview-table tr:nth-child(even) {
+            background: rgba(255, 255, 255, 0.05);
+        }
+        
+        .preview-table .center {
+            text-align: center;
+        }
+        
+        .preview-table .right {
+            text-align: right;
+        }
+        
+        .notification {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            padding: 15px 25px;
+            border-radius: 10px;
+            background: var(--dark-bg);
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.3);
+            transform: translateX(150%);
+            transition: transform 0.4s ease;
+            z-index: 1000;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        
+        .notification.show {
+            transform: translateX(0);
+        }
+        
+        .notification.success {
+            border-left: 4px solid var(--success-color);
+        }
+        
+        .notification.error {
+            border-left: 4px solid var(--error-color);
+        }
+        
+        .notification.warning {
+            border-left: 4px solid var(--warning-color);
+        }
+        
+        .options-bar {
+            display: flex;
+            gap: 15px;
+            margin-bottom: 15px;
+            flex-wrap: wrap;
+        }
+        
+        .option-item {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        
+        .option-item input[type="checkbox"] {
+            width: 18px;
+            height: 18px;
+        }
+        
+        .option-item select {
+            padding: 8px 12px;
+            border-radius: 5px;
+            background: rgba(0, 0, 0, 0.2);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            color: var(--light-text);
+            outline: none;
+        }
+        
+        .option-item label {
+            font-size: 0.9rem;
+        }
+        
+        .stats-bar {
+            display: flex;
+            gap: 15px;
+            margin-top: 15px;
+            font-size: 0.9rem;
+            opacity: 0.8;
+            flex-wrap: wrap;
+        }
+        
+        footer {
+            text-align: center;
+            margin-top: 40px;
+            opacity: 0.7;
+            font-size: 0.9rem;
+        }
+        
+        /* 移动端优化 */
+        @media (max-width: 768px) {
+            .container {
+                width: 95%;
+                padding: 15px;
+            }
+            
+            h1 {
+                font-size: 2rem;
+            }
+            
+            .glass-panel {
+                padding: 20px;
+            }
+            
+            .button-group {
+                flex-direction: column;
+            }
+            
+            button {
+                width: 100%;
+                justify-content: center;
+            }
+            
+            textarea {
+                min-height: 150px;
+            }
+            
+            .preview-table th, .preview-table td {
+                padding: 8px 10px;
+                font-size: 0.9rem;
+            }
+            
+            .options-bar, .stats-bar {
+                flex-direction: column;
+                gap: 10px;
+            }
+        }
+        
+        /* PC端优化 */
+        @media (min-width: 1200px) {
+            .container {
+                max-width: 1200px;
+            }
+            
+            .glass-panel {
+                padding: 30px;
+            }
+            
+            .button-group {
+                gap: 20px;
+            }
+            
+            button {
+                padding: 15px 30px;
+                font-size: 1.1rem;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>Markdown表格转Excel转换器</h1>
+            <p class="description">将Markdown格式的表格转换为Excel文件，支持实时预览和下载功能</p>
+        </header>
+        
+        <div class="glass-panel">
+            <div class="input-section">
+                <h2>输入Markdown表格</h2>
+                <textarea id="markdownInput" placeholder="在此粘贴或输入Markdown表格...&#10;例如：&#10;| 姓名 | 年龄 | 职业 |&#10;|------|------|------|&#10;| 张三 | 28   | 工程师 |&#10;| 李四 | 32   | 设计师 |"></textarea>
+            </div>
+            
+            <div class="options-bar">
+                <div class="option-item">
+                    <input type="checkbox" id="autoDetectHeaders" checked>
+                    <label for="autoDetectHeaders">自动检测表头</label>
+                </div>
+                <div class="option-item">
+                    <input type="checkbox" id="trimCells" checked>
+                    <label for="trimCells">修剪单元格内容</label>
+                </div>
+                <div class="option-item">
+                    <label for="sheetName">工作表名称:</label>
+                    <input type="text" id="sheetName" value="Sheet1" style="width: 100px; padding: 5px; background: rgba(0,0,0,0.2); border: 1px solid rgba(255,255,255,0.1); color: white; border-radius: 5px;">
+                </div>
+            </div>
+            
+            <div class="button-group">
+                <button id="convertBtn">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16">
+                        <path fill-rule="evenodd" d="M1 13.5A1.5 1.5 0 0 0 2.5 15h11a1.5 1.5 0 0 0 1.5-1.5v-6a.5.5 0 0 0-1 0v6a.5.5 0 0 1-.5.5h-11a.5.5 0 0 1-.5-.5v-11a.5.5 0 0 1 .5-.5H9a.5.5 0 0 0 0-1H2.5A1.5 1.5 0 0 0 1 2.5v11z"/>
+                        <path fill-rule="evenodd" d="M15.854 2.146a.5.5 0 0 1 0 .708l-10 10a.5.5 0 0 1-.708-.708l10-10a.5.5 0 0 1 .708 0z"/>
+                    </svg>
+                    转换表格
+                </button>
+                <button id="downloadBtn" disabled>
+                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16">
+                        <path d="M.5 9.9a.5.5 0 0 1 .5.5v2.5a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1v-2.5a.5.5 0 0 1 1 0v2.5a2 2 0 0 1-2 2H2a2 2 0 0 1-2-2v-2.5a.5.5 0 0 1 .5-.5z"/>
+                        <path d="M7.646 11.854a.5.5 0 0 0 .708 0l3-3a.5.5 0 0 0-.708-.708L8.5 10.293V1.5a.5.5 0 0 0-1 0v8.793L5.354 8.146a.5.5 0 1 0-.708.708l3 3z"/>
+                    </svg>
+                    下载Excel文件
+                </button>
+                <button id="clearBtn">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16">
+                        <path d="M5.5 5.5A.5.5 0 0 1 6 6v6a.5.5 0 0 1-1 0V6a.5.5 0 0 1 .5-.5zm2.5 0a.5.5 0 0 1 .5.5v6a.5.5 0 0 1-1 0V6a.5.5 0 0 1 .5-.5zm3 .5a.5.5 0 0 0-1 0v6a.5.5 0 0 0 1 0V6z"/>
+                        <path fill-rule="evenodd" d="M14.5 3a1 1 0 0 1-1 1H13v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V4h-.5a1 1 0 0 1-1-1V2a1 1 0 0 1 1-1H6a1 1 0 0 1 1-1h2a1 1 0 0 1 1 1h3.5a1 1 0 0 1 1 1v1zM4.118 4 4 4.059V13a1 1 0 0 0 1 1h6a1 1 0 0 0 1-1V4.059L11.882 4H4.118zM2.5 3V2h11v1h-11z"/>
+                    </svg>
+                    清除
+                </button>
+            </div>
+            
+            <div class="output-section">
+                <h2>预览 <span id="previewStatus"></span></h2>
+                <div class="preview-area" id="previewArea">
+                    <p>转换后的表格将显示在这里...</p>
+                </div>
+                
+                <div class="stats-bar">
+                    <span id="rowCount">行数: 0</span>
+                    <span id="colCount">列数: 0</span>
+                    <span id="cellCount">单元格: 0</span>
+                </div>
+            </div>
+        </div>
+        
+        <footer>
+            <p>© Markdown表格转换工具 </p>
+        </footer>
+    </div>
+    
+    <div class="notification" id="notification">
+        <span id="notificationMessage"></span>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            const markdownInput = document.getElementById('markdownInput');
+            const convertBtn = document.getElementById('convertBtn');
+            const downloadBtn = document.getElementById('downloadBtn');
+            const clearBtn = document.getElementById('clearBtn');
+            const previewArea = document.getElementById('previewArea');
+            const notification = document.getElementById('notification');
+            const notificationMessage = document.getElementById('notificationMessage');
+            const autoDetectHeaders = document.getElementById('autoDetectHeaders');
+            const trimCells = document.getElementById('trimCells');
+            const sheetName = document.getElementById('sheetName');
+            const previewStatus = document.getElementById('previewStatus');
+            const rowCount = document.getElementById('rowCount');
+            const colCount = document.getElementById('colCount');
+            const cellCount = document.getElementById('cellCount');
+            
+            let workbook = null;
+            let tableData = [];
+            
+            // 转换按钮点击事件
+            convertBtn.addEventListener('click', function() {
+                const markdownText = markdownInput.value.trim();
+                
+                if (!markdownText) {
+                    showNotification('请输入Markdown表格内容', 'error');
+                    return;
+                }
+                
+                try {
+                    const result = convertMarkdownToWorkbook(markdownText);
+                    workbook = result.workbook;
+                    tableData = result.data;
+                    displayPreview(tableData, result.alignments);
+                    downloadBtn.disabled = false;
+                    updateStats(tableData);
+                    showNotification('表格转换成功！', 'success');
+                } catch (error) {
+                    showNotification('转换失败：' + error.message, 'error');
+                    console.error(error);
+                }
+            });
+            
+            // 下载按钮点击事件
+            downloadBtn.addEventListener('click', function() {
+                if (!workbook) {
+                    showNotification('请先转换表格', 'error');
+                    return;
+                }
+                
+                try {
+                    const fileName = prompt('请输入文件名（不需要扩展名）:', 'markdown_table');
+                    if (fileName) {
+                        // 使用Blob方式确保下载的是Excel文件
+                        const excelBuffer = XLSX.write(workbook, { bookType: 'xlsx', type: 'array' });
+                        const blob = new Blob([excelBuffer], { 
+                            type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' 
+                        });
+                        
+                        // 创建下载链接
+                        const url = URL.createObjectURL(blob);
+                        const a = document.createElement('a');
+                        a.href = url;
+                        a.download = `${fileName}.xlsx`;
+                        document.body.appendChild(a);
+                        a.click();
+                        
+                        // 清理
+                        setTimeout(() => {
+                            document.body.removeChild(a);
+                            URL.revokeObjectURL(url);
+                        }, 100);
+                        
+                        showNotification('Excel文件下载成功！', 'success');
+                    }
+                } catch (error) {
+                    showNotification('下载失败：' + error.message, 'error');
+                    console.error(error);
+                }
+            });
+            
+            // 清除按钮点击事件
+            clearBtn.addEventListener('click', function() {
+                markdownInput.value = '';
+                previewArea.innerHTML = '<p>转换后的表格将显示在这里...</p>';
+                downloadBtn.disabled = true;
+                workbook = null;
+                tableData = [];
+                updateStats([]);
+                previewStatus.textContent = '';
+                showNotification('已清除内容', 'success');
+            });
+            
+            // 显示通知
+            function showNotification(message, type) {
+                notificationMessage.textContent = message;
+                notification.className = 'notification ' + type;
+                notification.classList.add('show');
+                
+                setTimeout(() => {
+                    notification.classList.remove('show');
+                }, 3000);
+            }
+            
+            // 更新统计信息
+            function updateStats(data) {
+                const rows = data.length;
+                const cols = rows > 0 ? data[0].length : 0;
+                const cells = rows * cols;
+                
+                rowCount.textContent = `行数: ${rows}`;
+                colCount.textContent = `列数: ${cols}`;
+                cellCount.textContent = `单元格: ${cells}`;
+            }
+            
+            // 转换Markdown表格为Workbook对象
+            function convertMarkdownToWorkbook(markdownText) {
+                const lines = markdownText.split('\n').filter(line => line.trim() !== '');
+                
+                if (lines.length < 1) {
+                    throw new Error('没有有效的表格内容');
+                }
+                
+                // 解析表格数据
+                const { data, alignments } = parseMarkdownTable(lines);
+                
+                if (data.length === 0) {
+                    throw new Error('未能解析出表格数据');
+                }
+                
+                // 创建工作簿和工作表
+                const wb = XLSX.utils.book_new();
+                const ws = XLSX.utils.aoa_to_sheet(data);
+                
+                // 设置列宽
+                const colWidths = data[0].map((_, index) => ({ wch: 20 }));
+                ws['!cols'] = colWidths;
+                
+                XLSX.utils.book_append_sheet(wb, ws, sheetName.value);
+                
+                return { workbook: wb, data, alignments };
+            }
+            
+            // 解析Markdown表格
+            function parseMarkdownTable(lines) {
+                const data = [];
+                const alignments = [];
+                let hasHeader = false;
+                
+                // 检测表头分隔线
+                for (let i = 0; i < lines.length; i++) {
+                    if (isSeparatorLine(lines[i])) {
+                        hasHeader = true;
+                        // 解析对齐方式
+                        const lineAlignments = parseAlignments(lines[i]);
+                        alignments.push(...lineAlignments);
+                        break;
+                    }
+                }
+                
+                // 解析数据行
+                for (let i = 0; i < lines.length; i++) {
+                    const line = lines[i].trim();
+                    
+                    // 跳过分隔行
+                    if (isSeparatorLine(line)) {
+                        continue;
+                    }
+                    
+                    // 解析行数据
+                    const row = parseMarkdownLine(line);
+                    if (row && row.length > 0) {
+                        data.push(row);
+                    }
+                }
+                
+                // 如果没有检测到表头分隔线，但开启了自动检测表头，则把第一行作为表头
+                if (!hasHeader && autoDetectHeaders.checked && data.length > 0) {
+                    // 默认所有列居左对齐
+                    for (let i = 0; i < data[0].length; i++) {
+                        alignments.push('left');
+                    }
+                }
+                
+                return { data, alignments };
+            }
+            
+            // 检查是否为分隔行
+            function isSeparatorLine(line) {
+                return /^[\s|:-]+$/.test(line.replace(/\|/g, '').trim());
+            }
+            
+            // 解析对齐方式
+            function parseAlignments(line) {
+                const alignments = [];
+                const cells = line.split('|').filter(cell => cell.trim() !== '');
+                
+                for (const cell of cells) {
+                    const content = cell.trim();
+                    if (content.startsWith(':') && content.endsWith(':')) {
+                        alignments.push('center');
+                    } else if (content.endsWith(':')) {
+                        alignments.push('right');
+                    } else {
+                        alignments.push('left');
+                    }
+                }
+                
+                return alignments;
+            }
+            
+            // 解析Markdown表格行
+            function parseMarkdownLine(line) {
+                // 移除行首尾的管道符并分割单元格
+                const cells = line.trim()
+                    .replace(/(^\|)|(\|$)/g, '')
+                    .split('|')
+                    .map(cell => {
+                        let content = cell.trim();
+                        
+                        // 处理单元格内容修剪
+                        if (trimCells.checked) {
+                            content = content.trim();
+                        }
+                        
+                        return content;
+                    });
+                
+                return cells;
+            }
+            
+            // 显示预览
+            function displayPreview(data, alignments) {
+                if (data.length === 0) {
+                    previewArea.innerHTML = '<p>没有数据可显示</p>';
+                    previewStatus.textContent = '';
+                    return;
+                }
+                
+                let html = '<table class="preview-table">';
+                
+                // 添加表头
+                html += '<thead><tr>';
+                for (let i = 0; i < data[0].length; i++) {
+                    const alignment = alignments && i < alignments.length ? alignments[i] : 'left';
+                    html += `<th class="${alignment}">${escapeHtml(data[0][i])}</th>`;
+                }
+                html += '</tr></thead>';
+                
+                // 添加数据行
+                html += '<tbody>';
+                for (let i = 1; i < data.length; i++) {
+                    html += '<tr>';
+                    for (let j = 0; j < data[i].length; j++) {
+                        const alignment = alignments && j < alignments.length ? alignments[j] : 'left';
+                        html += `<td class="${alignment}">${escapeHtml(data[i][j])}</td>`;
+                    }
+                    html += '</tr>';
+                }
+                html += '</tbody></table>';
+                
+                previewArea.innerHTML = html;
+                previewStatus.textContent = `(${data.length}行 × ${data[0].length}列)`;
+            }
+            
+            // HTML转义函数
+            function escapeHtml(text) {
+                const div = document.createElement('div');
+                div.textContent = text;
+                return div.innerHTML;
+            }
+        });
+    </script>
+</body>
+</html>
