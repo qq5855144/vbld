@@ -7,7 +7,8 @@
 		<meta name="theme-color" content="#04091a">
 		<title>
 			GitHub仓库管理器
-		</title>		
+		</title>
+		<link rel="stylesheet" href="./style.css">
 		<link rel="stylesheet" href="https://cdn.bootcdn.net/ajax/libs/font-awesome/7.0.0/css/all.min.css">
 		  
 	</head>
@@ -12423,7 +12424,17 @@ async function fetchAndRenderApiStatus() {
             </div>`;
         });
         
-        
+        contentHTML += `
+        <div class="api-status-card">
+            <h4><i class="fa fa-info-circle"></i>联系与反馈</h4>
+            <div class="app-status-details" style="user-select: text; cursor: text;">
+            <p>作者：牡丹君</p>
+                <p >作者QQ：1473460411</p>
+                <p>QQ反馈群：719050780</p>
+                <p>当前版本：v${CURRENT_VERSION}</p>
+            </div>
+        </div>
+        `;
         contentHTML += tokenScopesCardHTML;
         el.apiStatusContent.innerHTML = contentHTML;
     } catch (error) {
